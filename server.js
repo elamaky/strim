@@ -43,7 +43,7 @@ io.on('connection', (socket) => {
     });
 });
 
-// Run the server on port 3000
-server.listen(3000, () => {
-    console.log('Server running on http://localhost:3000');
+// Run the server on all network interfaces (0.0.0.0) and port 3000
+server.listen(3000, '0.0.0.0', () => {
+    console.log('Server running on http://0.0.0.0:3000');
 });
