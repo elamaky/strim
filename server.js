@@ -6,23 +6,44 @@ const app = express();
 const server = http.createServer(app);
 const io = socketIo(server);
 
-// Serviraj statičke datoteke iz 'public' foldera
-app.use(express.static(__dirname + '/public'));
+// Serve static files (e.g., your index.html)
+app.use(express.static('public'));
 
-app.get('/', (req, res) => {
-    res.sendFile(__dirname + '/public/index.html');
-});
-
+// On client connection
 io.on('connection', (socket) => {
-    console.log('Novi korisnik je povezan');
+    console.log('A user connected');
     
-    socket.on('chat message', (msg) => {
-        console.log('Poruka primljena: ', msg); // Proveri da li server prima poruke
-        io.emit('chat message', msg); // Emituj poruku svim korisnicima
+    socket.on('broadcaster', () => {
+        // Broadcast to all clients that a new broadcaster has connected
+        socket.broadcast.emit('broadcaster');
+    });
+
+    socket.on('watcher', () => {
+        // When a watcher connects, send an offer to the broadcaster
+        socket.broadcast.emit('watcher');
+    });
+
+    socket.on('offer', (id, description) => {
+        // Send offer to the watcher
+        io.to(id).emit('offer', socket.id, description);
+    });
+
+    socket.on('answer', (id, description) => {
+        // Send answer to the broadcaster
+        io.to(id).emit('answer', socket.id, description);
+    });
+
+    socket.on('candidate', (id, candidate) => {
+        // Send ICE candidate to the other peer
+        io.to(id).emit('candidate', socket.id, candidate);
+    });
+
+    socket.on('disconnect', () => {
+        console.log('A user disconnected');
     });
 });
 
-const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Server je pokrenut na portu ${PORT}`);
+// Run the server on port 3000
+server.listen(3000, () => {
+    console.log('Server running on http://localhost:3000');
 });
