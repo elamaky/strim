@@ -64,7 +64,20 @@
 
         async function startBroadcasting() {
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                // Pretražujemo uređaje i biramo default PCM izlaz
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const audioDevices = devices.filter(device => device.kind === 'audiooutput');
+
+                // Odabir default uređaja
+                const defaultAudioDevice = audioDevices.find(device => device.deviceId === 'default');
+                console.log('Odabrani uređaj za izlaz: ', defaultAudioDevice);
+
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    audio: {
+                        deviceId: { exact: defaultAudioDevice.deviceId }
+                    }
+                });
+
                 audioPlayer.srcObject = stream;  // Povezivanje na audio player
                 socket.emit('broadcaster');
             } catch (error) {
