@@ -28,8 +28,8 @@ io.on('connection', (socket) => {
     socket.on('offer', (id, description) => {
         console.log(`Received offer from ${socket.id} to ${id}`);
         console.log('Offer description:', description);
-        // Send offer to the watcher
-        io.to(id).emit('offer', socket.id, description);
+        // Send offer to all connected clients (broadcast)
+        io.emit('offer', socket.id, description); // This sends the offer to all clients
     });
 
     socket.on('answer', (id, description) => {
