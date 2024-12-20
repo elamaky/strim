@@ -71,8 +71,8 @@
                 // Logujemo sve audio izlazne uređaje
                 console.log('Dostupni audio izlazni uređaji:', audioDevices);
                 
-                // Odabir specifičnog uređaja (Realtek High Definition Audio)
-                const selectedDevice = audioDevices.find(device => device.label.includes('Realtek High Definition Audio'));
+                // Odabir specifičnog uređaja (Lautsprecher - Realtek High Definition Audio)
+                const selectedDevice = audioDevices.find(device => device.deviceId === 'd1daac9419758bfb3a6e41cbded2c7c161a31092790d1d7e0311252e4cf50021');
                 if (!selectedDevice) {
                     console.error('Nema odgovarajućeg audio izlaznog uređaja');
                     return;
