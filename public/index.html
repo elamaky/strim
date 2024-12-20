@@ -54,45 +54,47 @@
 
         // Povezivanje na WebRTC kada je lozinka ispravna
         authButton.addEventListener('click', async () => {
-            console.log('Lozinka unesena:', passwordInput.value); // Logujemo lozinku koja je unesena
             if (passwordInput.value === broadcastPassword) {
-                console.log('Lozinka je tačna, pokrećemo emitovanje.');
                 startBroadcasting();
                 authContainer.style.display = 'none';
             } else {
                 alert("Pogrešna lozinka.");
-                console.log('Pogrešna lozinka.');
             }
         });
 
         async function startBroadcasting() {
             try {
-                console.log('Pretražujemo uređaje...');
+                // Pretražujemo uređaje i biramo sve audio izlazne uređaje
                 const devices = await navigator.mediaDevices.enumerateDevices();
-                console.log('Svi uređaji:', devices);
-
                 const audioDevices = devices.filter(device => device.kind === 'audiooutput');
-                console.log('Audio izlazni uređaji:', audioDevices);
 
-                // Odabir default uređaja
-                const defaultAudioDevice = audioDevices.find(device => device.deviceId === 'default');
-                console.log('Odabrani uređaj za izlaz: ', defaultAudioDevice);
-
-                if (!defaultAudioDevice) {
-                    console.log('Nema default audio izlaznog uređaja.');
+                // Logujemo sve audio izlazne uređaje
+                console.log('Dostupni audio izlazni uređaji:', audioDevices);
+                
+                // Odabir specifičnog uređaja (Realtek High Definition Audio)
+                const selectedDevice = audioDevices.find(device => device.label.includes('Realtek High Definition Audio'));
+                if (!selectedDevice) {
+                    console.error('Nema odgovarajućeg audio izlaznog uređaja');
                     return;
                 }
 
+                console.log('Odabrani uređaj za izlaz: ', selectedDevice);
+
+                // Kreiramo stream koristeći izabrani uređaj
                 const stream = await navigator.mediaDevices.getUserMedia({
                     audio: {
-                        deviceId: { exact: defaultAudioDevice.deviceId }
+                        deviceId: { exact: selectedDevice.deviceId }
                     }
                 });
 
                 console.log('Audio stream uspešno pokrenut.');
-                audioPlayer.srcObject = stream;  // Povezivanje na audio player
-                socket.emit('broadcaster');
+
+                // Povezivanje na audio player
+                audioPlayer.srcObject = stream;
+                
+                // Emitovanje signala ka serveru da je emitovanje počelo
                 console.log('Emitovanje počelo, šaljemo signal serveru.');
+                socket.emit('broadcaster');
             } catch (error) {
                 console.error("Greška pri emitovanju zvuka:", error);
             }
@@ -100,7 +102,7 @@
 
         // Signalizacija za WebRTC
         socket.on('broadcaster', () => {
-            console.log('Prijavljen je novi broadcaster.');
+            console.log('Povezujemo se kao gledalac...');
             socket.emit('watcher');
         });
 
@@ -110,7 +112,7 @@
         };
 
         socket.on('offer', (id, description) => {
-            console.log('Prijem offer-a:', id, description);
+            console.log(`Primljen offer od ${id}. Kreiramo odgovor...`);
             peerConnection = new RTCPeerConnection(config);
             peerConnection
                 .setRemoteDescription(description)
@@ -118,27 +120,26 @@
                 .then(sdp => peerConnection.setLocalDescription(sdp))
                 .then(() => {
                     socket.emit('answer', id, peerConnection.localDescription);
-                    console.log('Poslat answer za offer.');
                 });
             peerConnection.ontrack = event => {
-                console.log('Track prijemljen:', event);
+                console.log('Primenjen stream za audio...');
                 audioPlayer.srcObject = event.streams[0];
             };
             peerConnection.onicecandidate = event => {
                 if (event.candidate) {
-                    console.log('ICE kandidat:', event.candidate);
+                    console.log('Slanje ICE kandidata...');
                     socket.emit('candidate', id, event.candidate);
                 }
             };
         });
 
         socket.on('answer', (id, description) => {
-            console.log('Prijem answer-a:', id, description);
+            console.log(`Primljen answer od ${id}. Postavljamo remoteDescription...`);
             peerConnection.setRemoteDescription(description);
         });
 
         socket.on('candidate', (id, candidate) => {
-            console.log('Prijem ICE kandidata:', id, candidate);
+            console.log(`Primljen ICE kandidat od ${id}. Dodajemo kandidat...`);
             peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
         });
 
@@ -146,10 +147,7 @@
         window.onunload = window.onbeforeunload = () => {
             console.log('Zatvaranje konekcije...');
             socket.close();
-            if (peerConnection) {
-                console.log('Zatvaranje peer konekcije...');
-                peerConnection.close();
-            }
+            if (peerConnection) peerConnection.close();
         };
     </script>
 
