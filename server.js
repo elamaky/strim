@@ -11,35 +11,43 @@ app.use(express.static('public'));
 
 // On client connection
 io.on('connection', (socket) => {
-    console.log('A user connected');
-    
+    console.log(`A user connected: ${socket.id}`);
+
     socket.on('broadcaster', () => {
+        console.log(`${socket.id} is a broadcaster.`);
         // Broadcast to all clients that a new broadcaster has connected
         socket.broadcast.emit('broadcaster');
     });
 
     socket.on('watcher', () => {
+        console.log(`${socket.id} is a watcher.`);
         // When a watcher connects, send an offer to the broadcaster
         socket.broadcast.emit('watcher');
     });
 
     socket.on('offer', (id, description) => {
+        console.log(`Received offer from ${socket.id} to ${id}`);
+        console.log('Offer description:', description);
         // Send offer to the watcher
         io.to(id).emit('offer', socket.id, description);
     });
 
     socket.on('answer', (id, description) => {
+        console.log(`Received answer from ${socket.id} for ${id}`);
+        console.log('Answer description:', description);
         // Send answer to the broadcaster
         io.to(id).emit('answer', socket.id, description);
     });
 
     socket.on('candidate', (id, candidate) => {
+        console.log(`Received ICE candidate from ${socket.id} for ${id}`);
+        console.log('ICE candidate:', candidate);
         // Send ICE candidate to the other peer
         io.to(id).emit('candidate', socket.id, candidate);
     });
 
     socket.on('disconnect', () => {
-        console.log('A user disconnected');
+        console.log(`A user disconnected: ${socket.id}`);
     });
 });
 
