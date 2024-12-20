@@ -54,23 +54,34 @@
 
         // Povezivanje na WebRTC kada je lozinka ispravna
         authButton.addEventListener('click', async () => {
+            console.log('Lozinka unesena:', passwordInput.value); // Logujemo lozinku koja je unesena
             if (passwordInput.value === broadcastPassword) {
+                console.log('Lozinka je tačna, pokrećemo emitovanje.');
                 startBroadcasting();
                 authContainer.style.display = 'none';
             } else {
                 alert("Pogrešna lozinka.");
+                console.log('Pogrešna lozinka.');
             }
         });
 
         async function startBroadcasting() {
             try {
-                // Pretražujemo uređaje i biramo default PCM izlaz
+                console.log('Pretražujemo uređaje...');
                 const devices = await navigator.mediaDevices.enumerateDevices();
+                console.log('Svi uređaji:', devices);
+
                 const audioDevices = devices.filter(device => device.kind === 'audiooutput');
+                console.log('Audio izlazni uređaji:', audioDevices);
 
                 // Odabir default uređaja
                 const defaultAudioDevice = audioDevices.find(device => device.deviceId === 'default');
                 console.log('Odabrani uređaj za izlaz: ', defaultAudioDevice);
+
+                if (!defaultAudioDevice) {
+                    console.log('Nema default audio izlaznog uređaja.');
+                    return;
+                }
 
                 const stream = await navigator.mediaDevices.getUserMedia({
                     audio: {
@@ -78,8 +89,10 @@
                     }
                 });
 
+                console.log('Audio stream uspešno pokrenut.');
                 audioPlayer.srcObject = stream;  // Povezivanje na audio player
                 socket.emit('broadcaster');
+                console.log('Emitovanje počelo, šaljemo signal serveru.');
             } catch (error) {
                 console.error("Greška pri emitovanju zvuka:", error);
             }
@@ -87,6 +100,7 @@
 
         // Signalizacija za WebRTC
         socket.on('broadcaster', () => {
+            console.log('Prijavljen je novi broadcaster.');
             socket.emit('watcher');
         });
 
@@ -96,6 +110,7 @@
         };
 
         socket.on('offer', (id, description) => {
+            console.log('Prijem offer-a:', id, description);
             peerConnection = new RTCPeerConnection(config);
             peerConnection
                 .setRemoteDescription(description)
@@ -103,29 +118,38 @@
                 .then(sdp => peerConnection.setLocalDescription(sdp))
                 .then(() => {
                     socket.emit('answer', id, peerConnection.localDescription);
+                    console.log('Poslat answer za offer.');
                 });
             peerConnection.ontrack = event => {
+                console.log('Track prijemljen:', event);
                 audioPlayer.srcObject = event.streams[0];
             };
             peerConnection.onicecandidate = event => {
                 if (event.candidate) {
+                    console.log('ICE kandidat:', event.candidate);
                     socket.emit('candidate', id, event.candidate);
                 }
             };
         });
 
         socket.on('answer', (id, description) => {
+            console.log('Prijem answer-a:', id, description);
             peerConnection.setRemoteDescription(description);
         });
 
         socket.on('candidate', (id, candidate) => {
+            console.log('Prijem ICE kandidata:', id, candidate);
             peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
         });
 
         // Završavanje konekcije pri zatvaranju prozora
         window.onunload = window.onbeforeunload = () => {
+            console.log('Zatvaranje konekcije...');
             socket.close();
-            if (peerConnection) peerConnection.close();
+            if (peerConnection) {
+                console.log('Zatvaranje peer konekcije...');
+                peerConnection.close();
+            }
         };
     </script>
 
