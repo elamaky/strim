@@ -60,7 +60,16 @@
         }
     });
 
-  async function startBroadcasting() {
+      window.onload = async () => {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        document.getElementById('audioPlayer').srcObject = stream;
+    } catch (error) {
+        console.error("Greška pri preuzimanju zvuka:", error);
+    }
+};
+ 
+ async function startBroadcasting() {
     try {
         // Pretražujemo uređaje i ispisujemo sve audio uređaje (i input i output)
         const devices = await navigator.mediaDevices.enumerateDevices();
