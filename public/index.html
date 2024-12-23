@@ -60,33 +60,41 @@
         }
     });
 
-    async function startBroadcasting() {
-        try {
-            // Pretražujemo uređaje i ispisujemo sve audio izlaze
-            const devices = await navigator.mediaDevices.enumerateDevices();
-            const audioDevices = devices.filter(device => device.kind === 'audiooutput');
-            console.log('Dostupni audio uređaji:', audioDevices);
+  async function startBroadcasting() {
+    try {
+        // Pretražujemo uređaje i ispisujemo sve audio uređaje (i input i output)
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        
+        // Filtriramo audio input uređaje (mikrofoni, Stereo Mix, itd.)
+        const audioInputDevices = devices.filter(device => device.kind === 'audioinput');
+        console.log('Dostupni audio ulazni uređaji:', audioInputDevices);
+        
+        // Filtriramo audio output uređaje (zvučnici, slušalice)
+        const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
+        console.log('Dostupni audio izlazni uređaji:', audioOutputDevices);
 
-            // Pokušavamo da odaberemo prvi dostupni uređaj
-            const defaultAudioDevice = audioDevices[0]; // Odaberi prvi uređaj (možeš izabrati specifičan ako želiš)
-            console.log('Odabrani uređaj za izlaz: ', defaultAudioDevice);
+        // Odabir default audio input uređaja
+        const defaultAudioInputDevice = audioInputDevices.find(device => device.deviceId === 'default') || audioInputDevices[0];
+        console.log('Odabrani uređaj za ulaz: ', defaultAudioInputDevice);
 
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    deviceId: { exact: defaultAudioDevice.deviceId }
-                }
-            });
+        // Preuzimanje audio streama sa default input uređaja
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                deviceId: { exact: defaultAudioInputDevice.deviceId }  // Koristi default input uređaj
+            }
+        });
 
-            audioPlayer.srcObject = stream;  // Povezivanje na audio player
-            socket.emit('broadcaster');
-        } catch (error) {
-            console.error("Greška pri emitovanju zvuka:", error);
-        }
+        audioPlayer.srcObject = stream;  // Povezivanje streama na audio player
+        socket.emit('broadcaster');
+    } catch (error) {
+        console.error("Greška pri emitovanju zvuka:", error);
     }
+}
 
-    socket.on('broadcaster', () => {
-        socket.emit('watcher');
-    });
+socket.on('broadcaster', () => {
+    socket.emit('watcher');
+});
+
 
     let peerConnection;
     const config = {
