@@ -43,7 +43,7 @@
     <audio id="audioPlayer" autoplay controls></audio>
 
    <script>
-    const socket = io();
+   const socket = window.parent.socket;
     const authContainer = document.getElementById('authContainer');
     const passwordInput = document.getElementById('passwordInput');
     const authButton = document.getElementById('authButton');
