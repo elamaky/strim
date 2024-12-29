@@ -60,46 +60,23 @@
         }
     });
 
-    // Preuzmi audio stream sa StereoMix uređaja
+    async function startBroadcasting() {
+    try {
+        // Koristi tačan deviceId za StereoMix uređaj
+        const deviceId = 'HDAUDIO\\FUNC_01&VEN_10EC&DEV_0282&SUBSYS_103C8224&REV_1000\\4&20eb29e1&0&0001';
+
+        // Preuzmi audio stream sa StereoMix uređaja koristeći tačan deviceId
         const stream = await navigator.mediaDevices.getUserMedia({
             audio: {
-                deviceId: { exact: stereoMixDevice.deviceId }
+                deviceId: { exact: deviceId }
             }
         });
 
-        // Poveži stream sa audio player-om
+        // Poveži stream sa audio player
         document.getElementById('audioPlayer').srcObject = stream;
 
-    } catch (error) {
-        console.error("Greška pri preuzimanju zvuka:", error);
-    }
-};
- 
-async function startBroadcasting() {
-    try {
-        // Pretražujemo sve uređaje
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const audioInputDevices = devices.filter(device => device.kind === 'audioinput');
-
-        // Pronađi StereoMix uređaj
-        const stereoMixDevice = audioInputDevices.find(device => device.label === 'Standard - Stereomix (Realtek High Definition Audio)');
-
-        if (!stereoMixDevice) {
-            console.error("StereoMix uređaj nije dostupan.");
-            return;
-        }
-
-        console.log('Pronađen StereoMix uređaj:', stereoMixDevice);
-
-        // Preuzmi audio stream sa StereoMix uređaja
-        const stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-                deviceId: { exact: stereoMixDevice.deviceId }
-            }
-        });
-
-        audioPlayer.srcObject = stream; // Poveži stream sa audio player
-        socket.emit('broadcaster'); // Pošaljite signal za emitovanje
+        // Emituj signal za broadcaster
+        socket.emit('broadcaster');
 
     } catch (error) {
         console.error("Greška pri emitovanju zvuka:", error);
@@ -114,8 +91,7 @@ socket.on('broadcaster', () => {
     socket.emit('watcher');
 });
 
-
- let peerConnection;
+let peerConnection;
     const config = {
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]  // STUN server za WebRTC
     };
