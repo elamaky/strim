@@ -196,19 +196,16 @@ document.addEventListener('mouseup', () => {
         audioPlayer.style.display = 'block';
         audioPlayer.play();
 
-        const audioContext = new AudioContext();
-        const source = audioContext.createMediaElementSource(audioPlayer);
-        const processor = audioContext.createScriptProcessor(4096, 1, 1);
+      const audioContext = new AudioContext();
 
-        source.connect(processor);
-        processor.connect(audioContext.destination);
+// Učitaj i registruj AudioWorklet procesor
+audioContext.audioWorklet.addModule('processors.js').then(() => {
+   const workletNode = new MyWorkletNode(audioContext);
+    const source = audioContext.createMediaElementSource(audioPlayer);
+    source.connect(workletNode);
+     workletNode.connect(audioContext.destination);
+});
 
-        processor.onaudioprocess = (event) => {
-            const audioData = event.inputBuffer.getChannelData(0); // Uhvati audio podatke
-            socket.emit('audio-stream', audioData.buffer); // Pošalji ih serveru
-        };
-    }
-}
 
 audioPlayer.addEventListener('ended', () => {
     // Izbriši trenutnu pesmu
