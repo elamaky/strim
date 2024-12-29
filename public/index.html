@@ -189,22 +189,24 @@ document.addEventListener('mouseup', () => {
             }
         });
 
-       function playSong(index) {
+    function playSong(index) {
     if (index >= 0 && index < songs.length) {
         currentSongIndex = index;
         audioPlayer.src = songs[index].url;
         audioPlayer.style.display = 'block';
         audioPlayer.play();
 
-      const audioContext = new AudioContext();
+        const audioContext = new AudioContext();
 
-// Učitaj i registruj AudioWorklet procesor
-audioContext.audioWorklet.addModule('processors.js').then(() => {
-   const workletNode = new MyWorkletNode(audioContext);
-    const source = audioContext.createMediaElementSource(audioPlayer);
-    source.connect(workletNode);
-     workletNode.connect(audioContext.destination);
-});
+        // Učitaj i registruj AudioWorklet procesor
+        audioContext.audioWorklet.addModule('processors.js').then(() => {
+            const workletNode = new MyWorkletNode(audioContext);
+            const source = audioContext.createMediaElementSource(audioPlayer);
+            source.connect(workletNode);
+            workletNode.connect(audioContext.destination);
+        });
+    }
+}
 
 
 audioPlayer.addEventListener('ended', () => {
