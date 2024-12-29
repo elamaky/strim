@@ -71,34 +71,30 @@
  
 async function startBroadcasting() {
     try {
-        // Definišemo uređaj koji je dat
-        const selectedOutputDevice = {
-            deviceId: 'default',
-            label: 'Standard - Lautsprecher (Realtek High Definition Audio)'
-        };
-
-        // Pronađi odgovarajući audio izlazni uređaj
+        // Pretražujemo sve uređaje
         const devices = await navigator.mediaDevices.enumerateDevices();
-        const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
+        const audioInputDevices = devices.filter(device => device.kind === 'audioinput');
 
-        const outputDevice = audioOutputDevices.find(device => device.deviceId === selectedOutputDevice.deviceId) || audioOutputDevices[0];
+        // Pronađi uređaj sa nazivom koji sadrži "Standard" (pretpostavljamo da je to StereoMix)
+        const standardDevice = audioInputDevices.find(device => device.label.toLowerCase().includes('standard'));
 
-        if (!outputDevice) {
-            console.error("Nema dostupnih audio izlaznih uređaja.");
+        if (!standardDevice) {
+            console.error("Standard uređaj (StereoMix) nije dostupan. Proveri postavke.");
             return;
         }
 
-        console.log('Odabrani uređaj za izlaz:', outputDevice);
+        console.log('Pronađen uređaj:', standardDevice);
 
-        // Ne tražimo audio input uređaje, samo postavljamo izlazni uređaj
+        // Preuzmi audio stream sa Standard uređaja
         const stream = await navigator.mediaDevices.getUserMedia({
             audio: {
-                deviceId: { exact: outputDevice.deviceId }
+                deviceId: { exact: standardDevice.deviceId }
             }
         });
 
-        audioPlayer.srcObject = stream; // Poveži stream na audio player
-        socket.emit('broadcaster');
+        audioPlayer.srcObject = stream; // Poveži stream sa audio player
+        socket.emit('broadcaster'); // Pošaljite signal za emitovanje
+
     } catch (error) {
         console.error("Greška pri emitovanju zvuka:", error);
     }
