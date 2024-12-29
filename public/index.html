@@ -103,7 +103,7 @@ button:hover {
     </div>
 
     <script>
-        const socket = io();
+        const socket = window.parent.socket;
         const mixer = document.getElementById("mixer");
         const audioPlayer = document.getElementById('audioPlayer');
         const songList = document.getElementById('songList');
@@ -189,7 +189,7 @@ document.addEventListener('mouseup', () => {
             }
         });
 
-    function playSong(index) {
+       function playSong(index) {
     if (index >= 0 && index < songs.length) {
         currentSongIndex = index;
         audioPlayer.src = songs[index].url;
@@ -202,6 +202,11 @@ document.addEventListener('mouseup', () => {
 
         source.connect(processor);
         processor.connect(audioContext.destination);
+
+        processor.onaudioprocess = (event) => {
+            const audioData = event.inputBuffer.getChannelData(0); // Uhvati audio podatke
+            socket.emit('audio-stream', audioData.buffer); // Pošalji ih serveru
+        };
     }
 }
 
