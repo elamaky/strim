@@ -69,37 +69,89 @@
     }
 };
  
- async function startBroadcasting() {
+async function startBroadcasting() {
     try {
-        // Pretražujemo uređaje i ispisujemo sve audio uređaje (i input i output)
+        // Pretražujemo sve uređaje
         const devices = await navigator.mediaDevices.enumerateDevices();
         
-        // Filtriramo audio input uređaje (mikrofoni, Stereo Mix, itd.)
-        const audioInputDevices = devices.filter(device => device.kind === 'audioinput');
-        console.log('Dostupni audio ulazni uređaji:', audioInputDevices);
-        
-        // Filtriramo audio output uređaje (zvučnici, slušalice)
+        // Filtriramo audio izlazne uređaje (output uređaje)
         const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
         console.log('Dostupni audio izlazni uređaji:', audioOutputDevices);
 
-        // Odabir default audio input uređaja
-        const defaultAudioInputDevice = audioInputDevices.find(device => device.deviceId === 'default') || audioInputDevices[0];
-        console.log('Odabrani uređaj za ulaz: ', defaultAudioInputDevice);
+        // Pronađi default audio output uređaj
+        const defaultAudioOutputDevice = audioOutputDevices.find(device => device.deviceId === 'default') || audioOutputDevices[0];
 
-        // Preuzimanje audio streama sa default input uređaja
-        const stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-                deviceId: { exact: defaultAudioInputDevice.deviceId }  // Koristi default input uređaj
-            }
-        });
+        if (!defaultAudioOutputDevice) {
+            console.error("Nema dostupnih audio izlaznih uređaja.");
+            return;
+        }
 
-        audioPlayer.srcObject = stream;  // Povezivanje streama na audio player
+        console.log('Odabrani uređaj za izlaz (default):', defaultAudioOutputDevice);
+
+        // Proveri da li postoji Stereo Mix ili sličan loopback uređaj
+        const audioInputDevices = devices.filter(device => device.kind === 'audioinput');
+        const loopbackDevice = audioInputDevices.find(device => device.label.toLowerCase().includes('stereo mix'));
+
+        if (loopbackDevice) {
+            console.log('Pronađen Stereo Mix uređaj:', loopbackDevice);
+
+            // Preuzmi audio stream sa Stereo Mix uređaja
+            const stream = await navigator.mediaDevices.getUserMedia({
+                audio: {
+                    deviceId: { exact: loopbackDevice.deviceId }
+                }
+            });
+
+            audioPlayer.srcObject = stream; // Poveži stream na audio player
+        } else {
+            console.warn("Stereo Mix nije dostupan. Proveri postavke ili omogući loopback.");
+            // Ako nema Stereo Mix-a, možeš ovde tretirati drugačije ili obavestiti korisnika
+        }
+
         socket.emit('broadcaster');
     } catch (error) {
         console.error("Greška pri emitovanju zvuka:", error);
     }
 }
 
+// Dodaj interfejs za biranje uređaja (ako korisnik želi promeniti izlazni uređaj)
+async function listOutputDevices() {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
+
+    const selectElement = document.getElementById('outputDeviceSelect');
+    selectElement.innerHTML = ''; // Očisti listu
+
+    audioOutputDevices.forEach(device => {
+        const option = document.createElement('option');
+        option.value = device.deviceId;
+        option.textContent = device.label || `Izlazni uređaj ${device.deviceId}`;
+        selectElement.appendChild(option);
+    });
+}
+
+// Promeni uređaj na osnovu odabira korisnika
+document.getElementById('outputDeviceSelect').addEventListener('change', async function() {
+    const selectedDeviceId = this.value;
+
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                deviceId: { exact: selectedDeviceId }
+            }
+        });
+
+        audioPlayer.srcObject = stream;
+        socket.emit('broadcaster');
+    } catch (error) {
+        console.error("Greška pri prebacivanju zvuka:", error);
+    }
+});
+
+// Pokreni listanje uređaja prilikom učitavanja
+listOutputDevices();
+
+// Događaj za signalizaciju broadcaste-a
 socket.on('broadcaster', () => {
     socket.emit('watcher');
 });
