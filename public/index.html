@@ -71,93 +71,48 @@
  
 async function startBroadcasting() {
     try {
-        // Pretražujemo sve uređaje
+        // Definišemo uređaj koji je dat
+        const selectedOutputDevice = {
+            deviceId: 'default',
+            label: 'Standard - Lautsprecher (Realtek High Definition Audio)'
+        };
+
+        // Pronađi odgovarajući audio izlazni uređaj
         const devices = await navigator.mediaDevices.enumerateDevices();
-        
-        // Filtriramo audio izlazne uređaje (output uređaje)
         const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
-        console.log('Dostupni audio izlazni uređaji:', audioOutputDevices);
 
-        // Pronađi default audio output uređaj
-        const defaultAudioOutputDevice = audioOutputDevices.find(device => device.deviceId === 'default') || audioOutputDevices[0];
+        const outputDevice = audioOutputDevices.find(device => device.deviceId === selectedOutputDevice.deviceId) || audioOutputDevices[0];
 
-        if (!defaultAudioOutputDevice) {
+        if (!outputDevice) {
             console.error("Nema dostupnih audio izlaznih uređaja.");
             return;
         }
 
-        console.log('Odabrani uređaj za izlaz (default):', defaultAudioOutputDevice);
+        console.log('Odabrani uređaj za izlaz:', outputDevice);
 
-        // Proveri da li postoji Stereo Mix ili sličan loopback uređaj
-        const audioInputDevices = devices.filter(device => device.kind === 'audioinput');
-        const loopbackDevice = audioInputDevices.find(device => device.label.toLowerCase().includes('stereo mix'));
+        // Ne tražimo audio input uređaje, samo postavljamo izlazni uređaj
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                deviceId: { exact: outputDevice.deviceId }
+            }
+        });
 
-        if (loopbackDevice) {
-            console.log('Pronađen Stereo Mix uređaj:', loopbackDevice);
-
-            // Preuzmi audio stream sa Stereo Mix uređaja
-            const stream = await navigator.mediaDevices.getUserMedia({
-                audio: {
-                    deviceId: { exact: loopbackDevice.deviceId }
-                }
-            });
-
-            audioPlayer.srcObject = stream; // Poveži stream na audio player
-        } else {
-            console.warn("Stereo Mix nije dostupan. Proveri postavke ili omogući loopback.");
-            // Ako nema Stereo Mix-a, možeš ovde tretirati drugačije ili obavestiti korisnika
-        }
-
+        audioPlayer.srcObject = stream; // Poveži stream na audio player
         socket.emit('broadcaster');
     } catch (error) {
         console.error("Greška pri emitovanju zvuka:", error);
     }
 }
 
-// Dodaj interfejs za biranje uređaja (ako korisnik želi promeniti izlazni uređaj)
-async function listOutputDevices() {
-    const devices = await navigator.mediaDevices.enumerateDevices();
-    const audioOutputDevices = devices.filter(device => device.kind === 'audiooutput');
-
-    const selectElement = document.getElementById('outputDeviceSelect');
-    selectElement.innerHTML = ''; // Očisti listu
-
-    audioOutputDevices.forEach(device => {
-        const option = document.createElement('option');
-        option.value = device.deviceId;
-        option.textContent = device.label || `Izlazni uređaj ${device.deviceId}`;
-        selectElement.appendChild(option);
-    });
-}
-
-// Promeni uređaj na osnovu odabira korisnika
-document.getElementById('outputDeviceSelect').addEventListener('change', async function() {
-    const selectedDeviceId = this.value;
-
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            audio: {
-                deviceId: { exact: selectedDeviceId }
-            }
-        });
-
-        audioPlayer.srcObject = stream;
-        socket.emit('broadcaster');
-    } catch (error) {
-        console.error("Greška pri prebacivanju zvuka:", error);
-    }
-});
-
-// Pokreni listanje uređaja prilikom učitavanja
-listOutputDevices();
+// Pokreni broadcasting
+startBroadcasting();
 
 // Događaj za signalizaciju broadcaste-a
 socket.on('broadcaster', () => {
     socket.emit('watcher');
 });
 
-
-    let peerConnection;
+ let peerConnection;
     const config = {
         iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]  // STUN server za WebRTC
     };
