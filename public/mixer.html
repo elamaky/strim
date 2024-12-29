@@ -103,7 +103,7 @@ button:hover {
     </div>
 
     <script>
-        const socket = window.parent.socket;
+        const socket = io();
         const mixer = document.getElementById("mixer");
         const audioPlayer = document.getElementById('audioPlayer');
         const songList = document.getElementById('songList');
@@ -189,7 +189,7 @@ document.addEventListener('mouseup', () => {
             }
         });
 
-       function playSong(index) {
+    function playSong(index) {
     if (index >= 0 && index < songs.length) {
         currentSongIndex = index;
         audioPlayer.src = songs[index].url;
@@ -202,28 +202,10 @@ document.addEventListener('mouseup', () => {
 
         source.connect(processor);
         processor.connect(audioContext.destination);
-
-        processor.onaudioprocess = (event) => {
-            const audioData = event.inputBuffer.getChannelData(0); // Uhvati audio podatke
-            socket.emit('audio-stream', audioData.buffer); // Pošalji ih serveru
-        };
     }
 }
 
-// Reprodukuj primljeni audio od servera
-const audioContext = new AudioContext();
-const speaker = audioContext.createScriptProcessor(4096, 1, 1);
-
-speaker.connect(audioContext.destination);
-
-socket.on('audio-stream', (chunk) => {
-    const audioBuffer = new Float32Array(chunk);
-    speaker.onaudioprocess = (event) => {
-        event.outputBuffer.getChannelData(0).set(audioBuffer);
-    };
-});
-
-     audioPlayer.addEventListener('ended', () => {
+audioPlayer.addEventListener('ended', () => {
     // Izbriši trenutnu pesmu
     songs.splice(currentSongIndex, 1);
     songList.removeChild(songList.children[currentSongIndex]);
