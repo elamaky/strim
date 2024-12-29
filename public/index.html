@@ -103,8 +103,8 @@ button:hover {
     </div>
 
     <script>
-        const socket = window.parent.socket;
-        const mixer = document.getElementById("mixer");
+    const socket = io();  // Ovo automatski povezuje na server na 'localhost:3000' ili na adresu koju si postavio
+    const mixer = document.getElementById("mixer");
         const audioPlayer = document.getElementById('audioPlayer');
         const songList = document.getElementById('songList');
         const fileInput = document.getElementById('fileInput');
@@ -269,6 +269,86 @@ function updateSongsOrder() {
     songs = updatedOrder; // Ažuriraj globalni niz pesama
 }
 
+async function startBroadcasting() {
+    try {
+        // Koristi uređaj koji je povezan sa mikserom
+        const deviceId = mixer.value; // Pretpostavljam da je mixer <select> element ili input sa odgovarajućim ID-om
+
+        // Preuzmi audio stream sa uređaja koristeći tačan deviceId
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                deviceId: { exact: deviceId }
+            }
+        });
+
+        // Poveži stream sa audio player (samo za tebe)
+        document.getElementById('audioPlayer').srcObject = stream;
+
+        // Emituj signal za broadcaster
+        socket.emit('broadcaster');
+
+        // Proslijedi stream svim povezanim korisnicima (slušaoci)
+        socket.emit('stream', stream);
+
+    } catch (error) {
+        console.error("Greška pri emitovanju zvuka:", error);
+    }
+}
+
+// Pokreni broadcasting
+startBroadcasting();
+
+// Događaj za signalizaciju broadcaste-a
+socket.on('broadcaster', () => {
+    socket.emit('watcher');
+});
+
+// Peer konekcija i signalizacija
+let peerConnection;
+const config = {
+    iceServers: [{ urls: 'stun:stun.l.google.com:19302' }]  // STUN server za WebRTC
+};
+
+// Kada korisnik primi "offer" signal, treba da uspostavi vezu
+socket.on('offer', (id, description) => {
+    peerConnection = new RTCPeerConnection(config);
+    peerConnection
+        .setRemoteDescription(description)
+        .then(() => peerConnection.createAnswer())
+        .then(sdp => peerConnection.setLocalDescription(sdp))
+        .then(() => {
+            socket.emit('answer', id, peerConnection.localDescription);
+        });
+    
+    peerConnection.ontrack = event => {
+        // Poveži stream sa audio player-om (svi će slušati tvoj strim)
+        audioPlayer.srcObject = event.streams[0];
+    };
+    
+    peerConnection.onicecandidate = event => {
+        if (event.candidate) {
+            socket.emit('candidate', id, event.candidate);
+        }
+    };
+});
+
+// Kada korisnik primi odgovor, postavi remote description
+socket.on('answer', (id, description) => {
+    peerConnection.setRemoteDescription(description);
+});
+
+// Kada primi ICE candidate, dodaj ga na peer konekciju
+socket.on('candidate', (id, candidate) => {
+    peerConnection.addIceCandidate(new RTCIceCandidate(candidate));
+});
+
+// Završavanje konekcije pri zatvaranju prozora
+window.onunload = window.onbeforeunload = () => {
+    socket.close();
+    if (peerConnection) peerConnection.close();
+};
+
+        
 </script>
 </body>
 </html
