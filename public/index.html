@@ -60,10 +60,16 @@
         }
     });
 
-      window.onload = async () => {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    // Preuzmi audio stream sa StereoMix uređaja
+        const stream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+                deviceId: { exact: stereoMixDevice.deviceId }
+            }
+        });
+
+        // Poveži stream sa audio player-om
         document.getElementById('audioPlayer').srcObject = stream;
+
     } catch (error) {
         console.error("Greška pri preuzimanju zvuka:", error);
     }
@@ -75,20 +81,20 @@ async function startBroadcasting() {
         const devices = await navigator.mediaDevices.enumerateDevices();
         const audioInputDevices = devices.filter(device => device.kind === 'audioinput');
 
-        // Pronađi uređaj sa nazivom koji sadrži "Standard" (pretpostavljamo da je to StereoMix)
-        const standardDevice = audioInputDevices.find(device => device.label.toLowerCase().includes('standard'));
+        // Pronađi StereoMix uređaj
+        const stereoMixDevice = audioInputDevices.find(device => device.label === 'Standard - Stereomix (Realtek High Definition Audio)');
 
-        if (!standardDevice) {
-            console.error("Standard uređaj (StereoMix) nije dostupan. Proveri postavke.");
+        if (!stereoMixDevice) {
+            console.error("StereoMix uređaj nije dostupan.");
             return;
         }
 
-        console.log('Pronađen uređaj:', standardDevice);
+        console.log('Pronađen StereoMix uređaj:', stereoMixDevice);
 
-        // Preuzmi audio stream sa Standard uređaja
+        // Preuzmi audio stream sa StereoMix uređaja
         const stream = await navigator.mediaDevices.getUserMedia({
             audio: {
-                deviceId: { exact: standardDevice.deviceId }
+                deviceId: { exact: stereoMixDevice.deviceId }
             }
         });
 
@@ -107,6 +113,7 @@ startBroadcasting();
 socket.on('broadcaster', () => {
     socket.emit('watcher');
 });
+
 
  let peerConnection;
     const config = {
