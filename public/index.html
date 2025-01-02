@@ -102,9 +102,9 @@ button:hover {
         </div>
     </div>
 
-    <script>
-    const socket = io();  // Ovo automatski povezuje na server na 'localhost:3000' ili na adresu koju si postavio
-    const mixer = document.getElementById("mixer");
+   <script>
+        const socket = io();
+        const mixer = document.getElementById("mixer");
         const audioPlayer = document.getElementById('audioPlayer');
         const songList = document.getElementById('songList');
         const fileInput = document.getElementById('fileInput');
@@ -114,6 +114,10 @@ button:hover {
         const closeButton = document.getElementById('closeButton');
         let songs = [];
         let currentSongIndex = 0;
+       const audioContext = new AudioContext();
+const audioElement = new Audio();
+const audioSourceNode = audioContext.createMediaElementSource(audioElement);
+const gainNode = audioContext.createGain();
 
         let isDragging = false;
 let offsetX, offsetY;
@@ -197,17 +201,13 @@ document.addEventListener('mouseup', () => {
         audioPlayer.play();
 
         const audioContext = new AudioContext();
+        const source = audioContext.createMediaElementSource(audioPlayer);
+        const processor = audioContext.createScriptProcessor(4096, 1, 1);
 
-        // Učitaj i registruj AudioWorklet procesor
-        audioContext.audioWorklet.addModule('processors.js').then(() => {
-            const workletNode = new MyWorkletNode(audioContext);
-            const source = audioContext.createMediaElementSource(audioPlayer);
-            source.connect(workletNode);
-            workletNode.connect(audioContext.destination);
-        });
+        source.connect(processor);
+        processor.connect(audioContext.destination);
     }
 }
-
 
 audioPlayer.addEventListener('ended', () => {
     // Izbriši trenutnu pesmu
@@ -268,7 +268,26 @@ function updateSongsOrder() {
 
     songs = updatedOrder; // Ažuriraj globalni niz pesama
 }
+audioSourceNode.connect(gainNode);
+gainNode.connect(audioContext.destination);
 
+socket.on('audioData', (chunk) => {
+  const audioBuffer = audioContext.decodeAudioData(chunk.buffer, (buffer) => {
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(gainNode);
+    source.start();
+  });
+});
+
+socket.on('audioEnded', () => {
+  console.log('Audio playback ended');
+});
+
+function playSong(songUrl) {
+  socket.emit('playSong', songUrl);
+}
+       
 </script>
 </body>
 </html
