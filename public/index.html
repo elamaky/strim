@@ -114,8 +114,7 @@ button:hover {
         const closeButton = document.getElementById('closeButton');
         let songs = [];
         let currentSongIndex = 0;
-       const audioContext = new AudioContext();
-const audioElement = new Audio();
+       const audioElement = new Audio();
 const audioSourceNode = audioContext.createMediaElementSource(audioElement);
 const gainNode = audioContext.createGain();
 
